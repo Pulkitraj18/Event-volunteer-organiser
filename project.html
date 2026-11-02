@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Volunteer Scheduler</title>
+
+<style>
+body{font-family:Arial, sans-serif;background:#f1f5f9;margin:0;padding:0}
+
+
+header{background:#2457a7;color:white;padding:15px 25px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+header h1{margin:0;font-size:1.4rem}
+nav button{background:transparent;border:1px solid white;color:white;padding:8px 16px;border-radius:4px;cursor:pointer;margin-left:8px;font-weight:bold}
+nav button:hover{background:white;color:#2457a7}
+
+.container{max-width:1000px;margin:20px auto;padding:0 15px}
+
+
+.hero{background:linear-gradient(135deg, #2457a7, #1d4ed8);color:white;padding:50px 25px;text-align:center;border-radius:10px;margin-bottom:25px;box-shadow:0 4px 6px rgba(0,0,0,0.1)}
+.hero h2{font-size:2rem;margin:0 0 10px 0}
+.hero p{font-size:1.1rem;margin:0 0 20px 0;opacity:0.9}
+.hero .cta-btn{background:#4e93c8;color:white;border:0;padding:12px 24px;font-size:1rem;border-radius:6px;cursor:pointer;font-weight:bold}
+
+
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:15px;margin-bottom:25px}
+.feature-card{background:white;padding:20px;border-radius:8px;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,0.05)}
+.feature-card h3{margin-top:0;color:#2457a7}
+
+
+section{background:white;padding:20px;margin:15px 0;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.05)}
+input,select,button{padding:8px;margin:5px;box-sizing:border-box}
+button{background:#2457a7;color:white;border:0;cursor:pointer;border-radius:4px}
+button:hover{background:#1a4282}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #ccc;padding:8px;text-align:left}
+th{background:#dce7f7}
+
+.hidden{display:none}
+</style>
+
+<script>
+let events=JSON.parse(localStorage.events||"[]");
+let volunteers=JSON.parse(localStorage.volunteers||"[]");
+let jobs=JSON.parse(localStorage.jobs||"[]");
+
+
+function switchView(viewName){
+  const frontView = document.getElementById("frontPageView");
+  const dashboardView = document.getElementById("dashboardView");
+  
+  if(viewName === 'dashboard'){
+    frontView.classList.add("hidden");
+    dashboardView.classList.remove("hidden");
+  } else {
+    frontView.classList.remove("hidden");
+    dashboardView.classList.add("hidden");
+  }
+}
+
+function save(){
+  localStorage.events=JSON.stringify(events);
+  localStorage.volunteers=JSON.stringify(volunteers);
+  localStorage.jobs=JSON.stringify(jobs);
+}
+
+function addEvent(){
+  let n=document.getElementById("en").value;
+  let d=document.getElementById("ed").value;
+  let l=document.getElementById("el").value;
+  if(!n||!d||!l)return alert("Fill all event details");
+  events.push({id:Date.now(),n,d,l});
+  save();show();document.getElementById("eventForm").reset();
+}
+
+function addVolunteer(){
+  let n=document.getElementById("vn").value;
+  let p=document.getElementById("vp").value;
+  if(!n||!p)return alert("Fill all volunteer details");
+  volunteers.push({id:Date.now(),n,p});
+  save();show();document.getElementById("volForm").reset();
+}
+
+function assign(){
+  let e=events.find(x=>x.id==document.getElementById("ev").value);
+  let v=volunteers.find(x=>x.id==document.getElementById("vo").value);
+  let r=document.getElementById("role").value;
+  let s=document.getElementById("shift").value;
+  if(!e||!v||!r||!s)return alert("Select all details");
+  if(jobs.some(x=>x.eid==e.id&&x.vid==v.id&&x.s==s))
+    return alert("Already assigned to this event and shift");
+  jobs.push({id:Date.now(),eid:e.id,vid:v.id,e:e.n,v:v.n,r,s,a:"Not Marked"});
+  save();show();
+}
+
+function remove(type,id){
+  if(!confirm("Delete this record?"))return;
+  if(type=="e"){
+    events=events.filter(x=>x.id!=id);
+    jobs=jobs.filter(x=>x.eid!=id);
+  }
+  if(type=="v"){
+    volunteers=volunteers.filter(x=>x.id!=id);
+    jobs=jobs.filter(x=>x.vid!=id);
+  }
+  if(type=="j")jobs=jobs.filter(x=>x.id!=id);
+  save();show();
+}
+
+function cell(row,text){
+  let c=row.insertCell();c.textContent=text;return c;
+}
+
+function btn(row,text,fn){
+  let b=document.createElement("button");
+  b.textContent=text;b.onclick=fn;row.insertCell().append(b);
+}
+
+function show(){
+  let el=document.getElementById("events");
+  let vl=document.getElementById("volunteers");
+  let jl=document.getElementById("jobs");
+  let eo=document.getElementById("ev");
+  let vo=document.getElementById("vo");
+  el.innerHTML=vl.innerHTML=jl.innerHTML="";
+  eo.innerHTML='<option value="">Choose event</option>';
+  vo.innerHTML='<option value="">Choose volunteer</option>';
+
+  events.forEach(x=>{
+    let r=el.insertRow();[x.n,x.d,x.l].forEach(t=>cell(r,t));
+    btn(r,"Delete",()=>remove("e",x.id));
+    eo.add(new Option(x.n,x.id));
+  });
+
+  volunteers.forEach(x=>{
+    let r=vl.insertRow();[x.n,x.p].forEach(t=>cell(r,t));
+    btn(r,"Delete",()=>remove("v",x.id));
+    vo.add(new Option(x.n,x.id));
+  });
+
+  jobs.forEach(x=>{
+    let r=jl.insertRow();
+    [x.e,x.v,x.r,x.s].forEach(t=>cell(r,t));
+    let c=cell(r,"");
+    let a=document.createElement("select");
+    ["Not Marked","Present","Absent"].forEach(t=>a.add(new Option(t,t)));
+    a.value=x.a;
+    a.onchange=()=>{x.a=a.value;save();show();};
+    c.append(a);
+    btn(r,"Delete",()=>remove("j",x.id));
+  });
+
+  
+  document.getElementById("ec").textContent=events.length;
+  document.getElementById("vc").textContent=volunteers.length;
+  document.getElementById("jc").textContent=jobs.length;
+  document.getElementById("pc").textContent=jobs.filter(x=>x.a=="Present").length;
+
+ 
+  document.getElementById("hero-ec").textContent=events.length;
+  document.getElementById("hero-vc").textContent=volunteers.length;
+}
+
+window.onload=show;
+</script>
+</head>
+
+<body>
+
+<header>
+  <h1>Community Event Volunteer Scheduler</h1>
+  <nav>
+    <button onclick="switchView('front')">Home</button>
+    <button onclick="switchView('dashboard')">Scheduler App</button>
+  </nav>
+</header>
+
+<div class="container">
+
+  <!-- FRONT / LANDING PAGE -->
+  <div id="frontPageView">
+    <div class="hero">
+      <h2>Organize Events & Empower Volunteers</h2>
+      <p>A simple, all-in-one platform to plan community events, assign shifts, and manage attendance in real-time.</p>
+      <button class="cta-btn" onclick="switchView('dashboard')">Launch Scheduler</button>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <h3>📅 Events</h3>
+        <p>Register drives, dates, and venues cleanly in one centralized location.</p>
+        <p><b>Active:</b> <span id="hero-ec">0</span></p>
+      </div>
+      <div class="feature-card">
+        <h3>🤝 Volunteers</h3>
+        <p>Keep a unified roster with contact numbers ready for easy outreach.</p>
+        <p><b>Registered:</b> <span id="hero-vc">0</span></p>
+      </div>
+      <div class="feature-card">
+        <h3>⏱️ Assignments</h3>
+        <p>Assign shifts and designated roles without schedule conflicts.</p>
+      </div>
+      <div class="feature-card">
+        <h3>✅ Attendance</h3>
+        <p>Track participation on event day with simple status selectors.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD / SCHEDULER VIEW -->
+  <div id="dashboardView" class="hidden">
+    <section>
+      <h2>Dashboard Overview</h2>
+      Events: <b id="ec">0</b> |
+      Volunteers: <b id="vc">0</b> |
+      Assignments: <b id="jc">0</b> |
+      Present: <b id="pc">0</b>
+    </section>
+
+    <section>
+      <h2>Add Event</h2>
+      <form id="eventForm" onsubmit="event.preventDefault();addEvent()">
+        <input id="en" placeholder="Event name" required>
+        <input id="ed" type="date" required>
+        <input id="el" placeholder="Location" required>
+        <button>Add Event</button>
+      </form>
+      <table>
+        <tr><th>Name</th><th>Date</th><th>Location</th><th>Action</th></tr>
+        <tbody id="events"></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Add Volunteer</h2>
+      <form id="volForm" onsubmit="event.preventDefault();addVolunteer()">
+        <input id="vn" placeholder="Volunteer name" required>
+        <input id="vp" placeholder="Phone number" required>
+        <button>Add Volunteer</button>
+      </form>
+      <table>
+        <tr><th>Name</th><th>Phone</th><th>Action</th></tr>
+        <tbody id="volunteers"></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Assign Volunteer</h2>
+      <select id="ev"><option value="">Choose event</option></select>
+      <select id="vo"><option value="">Choose volunteer</option></select>
+      <select id="role">
+        <option value="">Choose role</option>
+        <option>Coordinator</option>
+        <option>Registration</option>
+        <option>Food Management</option>
+        <option>Decoration</option>
+        <option>Clean-up</option>
+      </select>
+      <select id="shift">
+        <option value="">Choose shift</option>
+        <option>Morning</option>
+        <option>Afternoon</option>
+        <option>Evening</option>
+      </select>
+      <button onclick="assign()">Assign</button>
+      <table>
+        <tr>
+          <th>Event</th><th>Volunteer</th><th>Role</th>
+          <th>Shift</th><th>Attendance</th><th>Action</th>
+        </tr>
+        <tbody id="jobs"></tbody>
+      </table>
+    </section>
+  </div>
+
+</div>
+
+</body>
+</html>
